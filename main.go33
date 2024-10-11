@@ -1,0 +1,44 @@
+package main
+
+import (
+	"log"
+
+	"github.com/EndlessUpHill/gooban/internal/config"
+	"github.com/EndlessUpHill/gooban/internal/core"
+	"github.com/EndlessUpHill/gooban/internal/queue"
+	"github.com/EndlessUpHill/gooban/internal/storage"
+	"github.com/EndlessUpHill/gooban/internal/worker"
+)
+
+func main() {
+    cfg := config.LoadConfig()
+
+    // Initialize storage
+    storage, err := storage.NewStorage(cfg.DatabaseURL)
+    if err != nil {
+        log.Fatalf("Failed to initialize storage: %v", err)
+    }
+
+    // Initialize queue
+    q := queue.NewQueue(storage)
+
+    // Initialize worker pool
+    w := worker.NewWorkerPool(cfg.WorkerCount, q)
+
+    // Start workers
+    w.Start()
+
+    // For demonstration, enqueue a sample job
+    sampleJob := &core.Job{
+        Name:     "SampleJob",
+        Args:     map[string]interface{}{"foo": "bar"},
+        MaxRetry: 3,
+    }
+
+    if err := q.AddJob(sampleJob); err != nil {
+        log.Fatalf("Failed to enqueue job: %v", err)
+    }
+
+    // Keep the application running
+    select {}
+}
